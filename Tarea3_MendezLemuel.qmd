@@ -236,3 +236,57 @@ El valor acumulado al 31 de diciembre es **₡`r resultado.3a`** y los intereses
 ganados son **₡`r resultado.3b`**. Con la tasa común (6 %) y el canal **App**,
 el valor acumulado es **₡`r resultado.3c`**.
 
+```{r}
+#| label: fig-ej3
+#| fig-cap: "Monto depositado cada mes y su valor acumulado al 31 de diciembre"
+#| fig-width: 9
+#| fig-height: 4.5
+tabla.ej3 <- va.personal$tabla
+tabla.ej3$valor.dic <- tabla.ej3$monto * tabla.ej3$factor
+tabla.ej3$crec      <- tabla.ej3$factor - 1                     # % que crece al 31-dic
+porc <- function(x) paste0("+", format(round(100 * x, 1), nsmall = 1, decimal.mark = ","), " %")
+
+barras.ej3 <- rbind(
+  data.frame(mes = tabla.ej3$mes, tipo = "Monto depositado", valor = tabla.ej3$monto),
+  data.frame(mes = tabla.ej3$mes, tipo = "Valor al 31-dic",  valor = tabla.ej3$valor.dic)
+)
+barras.ej3$grupo <- ifelse(barras.ej3$mes == 1,
+                           paste(barras.ej3$tipo, "(enero)"), barras.ej3$tipo)
+
+ganancia.ene <- tabla.ej3$valor.dic[1] - tabla.ej3$monto[1]
+
+grafico.ej3 <- ggplot(barras.ej3, aes(x = factor(mes), y = valor / 1e6, fill = grupo)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.75) +
+  geom_text(data = tabla.ej3,
+            aes(x = factor(mes), y = valor.dic / 1e6, label = porc(crec)),
+            inherit.aes = FALSE, vjust = -0.6, size = 3,
+            colour = ifelse(tabla.ej3$mes == 1, "#C0392B", "grey40"),
+            fontface = ifelse(tabla.ej3$mes == 1, "bold", "plain")) +
+  scale_fill_manual(values = c("Monto depositado"         = "grey85",
+                               "Valor al 31-dic"          = "grey60",
+                               "Monto depositado (enero)" = "#F1B6AE",
+                               "Valor al 31-dic (enero)"  = "#C0392B"),
+                    breaks = c("Monto depositado", "Valor al 31-dic")) +
+  scale_x_discrete(labels = c("ene", "feb", "mar", "abr", "may", "jun",
+                              "jul", "ago", "set", "oct", "nov", "dic")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
+  labs(
+    title    = paste0("Lo depositado en enero crece ", porc(tabla.ej3$crec[1]),
+                      " al 31-dic; lo de diciembre no gana interés"),
+    subtitle = paste0("Enero gana ₡", format(round(ganancia.ene), big.mark = " "),
+                      ". Cada mes que falta suma interés. Canal ", canal.interes,
+                      " · tasa anual ", tasa.anual * 100, " % · total intereses: ₡",
+                      format(round(va.personal$interes), big.mark = " ")),
+    x = NULL, y = "Millones de colones", fill = NULL,
+    caption = "Etiquetas: crecimiento de cada depósito al 31-dic, (1 + i_m)^(12 - m) - 1 · Fuente: data/transacciones_2025.csv (carné C24750)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.position = "top",
+        plot.title.position = "plot")
+
+ggsave("info/figuras/ej3_valor_acumulado.png", grafico.ej3,
+       width = 9, height = 4.5, dpi = 300, bg = "white")
+grafico.ej3
+```
