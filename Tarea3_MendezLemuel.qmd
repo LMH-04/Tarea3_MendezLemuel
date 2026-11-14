@@ -64,6 +64,17 @@ resultado.2d <- benford.web$canton[1]
 ```
 
 ```{r}
+#| label: calculos-ej3
+#| include: false
+va.personal <- valor.acumulado(tx, tasa.anual, canal.interes)
+va.comun    <- valor.acumulado(tx, tasa.anual = 0.06, canal = "App")
+
+resultado.3a <- sprintf("%.2f", va.personal$va)
+resultado.3b <- sprintf("%.2f", va.personal$interes)
+resultado.3c <- sprintf("%.2f", va.comun$va)
+```
+
+```{r}
 #| label: hoja-respuestas
 #| comment: ""
 cat(
@@ -74,6 +85,9 @@ cat(
   paste0("RESULTADO_2B = ", resultado.2b),
   paste0("RESULTADO_2C = ", resultado.2c),
   paste0("RESULTADO_2D = ", resultado.2d),
+  paste0("RESULTADO_3A = ", resultado.3a),
+  paste0("RESULTADO_3B = ", resultado.3b),
+  paste0("RESULTADO_3C = ", resultado.3c),
   sep = "\n"
 )
 ```
@@ -199,3 +213,26 @@ n.median <- round(median(benford.personal$n))
 `r n.top5` transacciones, frente a una mediana de `r n.median`; no parece
 fraude sino un efecto del tamaño de muestra, porque con pocos montos la
 proporción de cada dígito varía más por azar.
+
+## Ejercicio 3 — Valor acumulado con interés
+
+Lo que entra por el canal **`r canal.interes`** se deposita el último día de
+cada mes en una cuenta que paga una tasa efectiva anual de
+`r tasa.anual * 100` %. La tasa mensual equivalente es
+$i_m = (1 + i)^{1/12} - 1 =$ `r sprintf("%.6f", va.personal$tasa.mensual)` y el
+valor al 31 de diciembre es $VA = \sum_{m=1}^{12} S_m (1 + i_m)^{12 - m}$.
+
+```{r}
+#| label: tbl-ej3
+#| tbl-cap: "Monto mensual del canal y su factor de acumulación"
+knitr::kable(
+  va.personal$tabla,
+  col.names = c("Mes", "Monto (₡)", "Factor"),
+  digits = c(0, 0, 6), row.names = FALSE, format.args = list(big.mark = " ")
+)
+```
+
+El valor acumulado al 31 de diciembre es **₡`r resultado.3a`** y los intereses
+ganados son **₡`r resultado.3b`**. Con la tasa común (6 %) y el canal **App**,
+el valor acumulado es **₡`r resultado.3c`**.
+
