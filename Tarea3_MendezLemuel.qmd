@@ -1,0 +1,86 @@
+---
+title: "Tarea 3 — Proyecto R + Git + Excel"
+subtitle: "CA-0204 Herramientas de Ciencia de Datos I · II Ciclo 2026"
+author: "Lemuel Méndez Hidalgo · C24750"
+date: today
+lang: es
+format:
+  html:
+    embed-resources: true
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+source("cod/funciones_tarea3.R", encoding = "UTF-8")
+
+# Parámetros personales (salen del carné)
+parametros <- read.csv("config/parametros_tarea3.csv", sep = ";",
+                       encoding = "UTF-8", stringsAsFactors = FALSE)
+par.valor <- setNames(parametros$valor, parametros$parametro)
+
+ventana       <- as.numeric(par.valor["ventana"])
+k.alerta      <- as.numeric(par.valor["k.alerta"])
+canal.benford <- par.valor["canal.benford"]
+tasa.anual    <- as.numeric(par.valor["tasa.anual"])
+canal.interes <- par.valor["canal.interes"]
+
+# Base de transacciones generada por cod/01_datos.R
+tx <- read.csv("data/transacciones_2025.csv", sep = ";",
+               encoding = "UTF-8", stringsAsFactors = FALSE)
+```
+
+```{r}
+#| label: calculos-ej1
+#| include: false
+alertas        <- alerta.movil(tx, ventana, k.alerta)
+alertas.comun  <- alerta.movil(tx, ventana = 7, k.alerta = 2)
+
+resultado.1a <- sum(alertas$alerta, na.rm = TRUE)
+resultado.1b <- format(min(alertas$fecha[which(alertas$alerta)]), "%Y-%m-%d")
+resultado.1c <- sum(alertas.comun$alerta, na.rm = TRUE)
+```
+
+```{r}
+#| label: hoja-respuestas
+#| comment: ""
+cat(
+  paste0("RESULTADO_1A = ", resultado.1a),
+  paste0("RESULTADO_1B = ", resultado.1b),
+  paste0("RESULTADO_1C = ", resultado.1c),
+  sep = "\n"
+)
+```
+
+## Ejercicio 1 — Alertas por ventana móvil
+
+Para cada día $t$ se cuentan las transacciones $n_t$ y se comparan contra los
+`r ventana` días **anteriores** (sin incluir el día $t$). El día tiene alerta si
+$n_t > \mu_t + k \cdot s_t$, con $k =$ `r k.alerta`. Los primeros `r ventana`
+días no se evalúan.
+
+```{r}
+#| label: tbl-ej1
+#| tbl-cap: "Primeros 5 días con alerta (parámetros personales)"
+tabla.alertas <- alertas[which(alertas$alerta), c("fecha", "n.tx", "media", "desv")]
+tabla.alertas$umbral <- tabla.alertas$media + k.alerta * tabla.alertas$desv
+
+knitr::kable(
+  head(tabla.alertas, 5),
+  col.names = c("Fecha", "Transacciones", "Media", "Desv. estándar", "Umbral"),
+  digits = 1, row.names = FALSE, format.args = list(big.mark = " ")
+)
+```
+
+Con los parámetros personales (ventana = `r ventana`, k.alerta = `r k.alerta`)
+hay **`r resultado.1a` días con alerta** y la primera ocurre el
+**`r resultado.1b`**. Con los parámetros comunes (ventana = 7, k.alerta = 2)
+hay **`r resultado.1c` días con alerta**.
