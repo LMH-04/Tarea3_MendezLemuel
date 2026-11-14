@@ -36,6 +36,8 @@ canal.interes <- par.valor["canal.interes"]
 # Base de transacciones generada por cod/01_datos.R
 tx <- read.csv("data/transacciones_2025.csv", sep = ";",
                encoding = "UTF-8", stringsAsFactors = FALSE)
+cantones <- read.csv("data/cantones.csv", encoding = "UTF-8",
+                     stringsAsFactors = FALSE)
 ```
 
 ```{r}
@@ -50,12 +52,28 @@ resultado.1c <- sum(alertas.comun$alerta, na.rm = TRUE)
 ```
 
 ```{r}
+#| label: calculos-ej2
+#| include: false
+benford.personal <- benford.canton(tx, canal.benford, cantones)
+benford.web      <- benford.canton(tx, canal = "Web", cantones)
+
+resultado.2a <- sprintf("%.4f", benford.mad(tx$monto_crc[tx$canal == canal.benford]))
+resultado.2b <- benford.personal$canton[1]
+resultado.2c <- sum(benford.personal$mad > 0.015)
+resultado.2d <- benford.web$canton[1]
+```
+
+```{r}
 #| label: hoja-respuestas
 #| comment: ""
 cat(
   paste0("RESULTADO_1A = ", resultado.1a),
   paste0("RESULTADO_1B = ", resultado.1b),
   paste0("RESULTADO_1C = ", resultado.1c),
+  paste0("RESULTADO_2A = ", resultado.2a),
+  paste0("RESULTADO_2B = ", resultado.2b),
+  paste0("RESULTADO_2C = ", resultado.2c),
+  paste0("RESULTADO_2D = ", resultado.2d),
   sep = "\n"
 )
 ```
@@ -112,3 +130,72 @@ ggsave("info/figuras/ej1_alertas.png", grafico.ej1,
        width = 9, height = 4.5, dpi = 300, bg = "white")
 grafico.ej1
 ```
+
+## Ejercicio 2 — Ley de Benford por cantón
+
+Para cada monto se toma el primer dígito $d$ y se compara la proporción
+observada $p_d$ contra la de Benford, $B_d = \log_{10}(1 + 1/d)$. La
+desviación absoluta media es $\text{MAD} = \frac{1}{9}\sum_{d=1}^{9} |p_d - B_d|$
+y se clasifica con los cortes de Nigrini.
+
+```{r}
+#| label: tbl-ej2
+#| tbl-cap: "Cinco cantones con mayor MAD en el canal personal"
+knitr::kable(
+  head(benford.personal, 5),
+  col.names = c("Código", "Cantón", "Transacciones", "MAD", "Clase"),
+  digits = 4, row.names = FALSE
+)
+```
+
+En el canal **`r canal.benford`**, la MAD de todos los cantones juntos es
+**`r resultado.2a`**. El cantón con mayor MAD es **`r resultado.2b`** y hay
+**`r resultado.2c`** cantones en no conformidad (MAD > 0,015). En el canal
+**Web** (común), el cantón con mayor MAD es **`r resultado.2d`**.
+
+```{r}
+#| label: fig-ej2
+#| fig-cap: "Proporción del primer dígito en el canal personal contra la Ley de Benford"
+#| fig-width: 9
+#| fig-height: 4.5
+montos.canal <- tx$monto_crc[tx$canal == canal.benford]
+digito.canal <- montos.canal %/% 10^floor(log10(montos.canal))
+
+digitos.ej2 <- data.frame(
+  digito  = 1:9,
+  p.obs   = tabulate(digito.canal, nbins = 9) / length(digito.canal),
+  benford = log10(1 + 1 / (1:9))
+)
+
+grafico.ej2 <- ggplot(digitos.ej2, aes(x = digito)) +
+  geom_col(aes(y = p.obs), fill = "grey75", width = 0.7) +
+  geom_line(aes(y = benford), colour = "#C0392B", linewidth = 1) +
+  geom_point(aes(y = benford), colour = "#C0392B", size = 2.5) +
+  annotate("text", x = 6.2, y = 0.16, label = "Ley de Benford",
+           colour = "#C0392B", hjust = 0, size = 4) +
+  scale_x_continuous(breaks = 1:9) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
+    title    = paste0("Los montos de ", canal.benford,
+                      " siguen de cerca la Ley de Benford (MAD = ", resultado.2a, ")"),
+    subtitle = "Barras: proporción observada del primer dígito, todos los cantones juntos",
+    x = "Primer dígito", y = "Proporción de montos",
+    caption = "Fuente: data/transacciones_2025.csv (carné C24750)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        plot.title.position = "plot")
+
+ggsave("info/figuras/ej2_benford.png", grafico.ej2,
+       width = 9, height = 4.5, dpi = 300, bg = "white")
+grafico.ej2
+
+n.top5   <- round(mean(head(benford.personal$n, 5)))
+n.median <- round(median(benford.personal$n))
+```
+
+**Conclusión:** los cinco cantones con mayor MAD tienen en promedio
+`r n.top5` transacciones, frente a una mediana de `r n.median`; no parece
+fraude sino un efecto del tamaño de muestra, porque con pocos montos la
+proporción de cada dígito varía más por azar.
