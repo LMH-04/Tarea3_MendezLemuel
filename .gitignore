@@ -1,0 +1,21 @@
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Quarto (archivos intermedios del render)
+.quarto/
+*_files/
+
+# Clon del repositorio del docente (tiene su propio Git)
+base/
+
+# Datos generados por cod/01_datos.R (pesados, se reproducen con el carné)
+data/*
+!data/README.md
+
+# Archivos temporales de Excel y del sistema
+~$*
+Thumbs.db
+.DS_Store
