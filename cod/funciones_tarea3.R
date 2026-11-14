@@ -1,3 +1,7 @@
+# Librerías necesarias para las funciones de este archivo
+library(dplyr)
+
+
 # ------------------------------------------------------------
 # alerta.movil
 # Recibe:
@@ -33,4 +37,55 @@ alerta.movil <- function(df, ventana, k.alerta) {
   diario$desv   <- desv
   diario$alerta <- diario$n.tx > media + k.alerta * desv
   diario
+}
+
+
+# ------------------------------------------------------------
+# benford.mad
+# Recibe:
+#   x   vector numérico de montos (positivos).
+# Devuelve:
+#   un número: la desviación absoluta media (MAD) entre la
+#   proporción observada del primer dígito (p_d) y la de
+#   Benford (B_d = log10(1 + 1/d)), para d = 1, ..., 9.
+# ------------------------------------------------------------
+benford.mad <- function(x) {
+  x <- x[!is.na(x) & x > 0]
+  digito  <- x %/% 10^floor(log10(x))           # primer dígito, de 1 a 9
+  p.obs   <- tabulate(digito, nbins = 9) / length(x)
+  benford <- log10(1 + 1 / (1:9))
+  mean(abs(p.obs - benford))                    # = (1/9) * suma |p_d - B_d|
+}
+
+
+# ------------------------------------------------------------
+# benford.canton
+# Recibe:
+#   df        data frame de transacciones con cod_canton, canal
+#             y monto_crc.
+#   canal     canal a auditar (ej. "Web").
+#   cantones  catálogo con cod_canton y canton.
+#   limites   cortes de MAD de Nigrini para la clase:
+#             cercana, aceptable y marginal.
+# Devuelve:
+#   data frame con una fila por cantón: cod_canton, canton,
+#   n (transacciones del canal), mad y clase, ordenado de
+#   mayor a menor MAD.
+# ------------------------------------------------------------
+benford.canton <- function(df, canal, cantones,
+                           limites = c(0.006, 0.012, 0.015)) {
+  df |>
+    filter(.data$canal == .env$canal) |>          # columna canal == argumento canal
+    summarise(n   = n(),
+              mad = benford.mad(monto_crc),
+              .by = cod_canton) |>
+    left_join(select(cantones, cod_canton, canton), by = "cod_canton") |>
+    mutate(clase = as.character(cut(
+      mad,
+      breaks = c(-Inf, limites, Inf),
+      labels = c("conformidad cercana", "conformidad aceptable",
+                 "conformidad marginal", "no conformidad")
+    ))) |>
+    arrange(desc(mad)) |>
+    select(cod_canton, canton, n, mad, clase)
 }
