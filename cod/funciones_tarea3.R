@@ -89,3 +89,37 @@ benford.canton <- function(df, canal, cantones,
     arrange(desc(mad)) |>
     select(cod_canton, canton, n, mad, clase)
 }
+
+
+# ------------------------------------------------------------
+# valor.acumulado
+# Recibe:
+#   df          data frame de transacciones con fecha, canal y
+#               monto_crc.
+#   tasa.anual  tasa efectiva anual i, en decimal (0.06 = 6 %).
+#   canal       canal cuyos montos se depositan cada mes.
+# Devuelve:
+#   lista con
+#     tabla         data frame con mes, monto (S_m, total del mes)
+#                   y factor ((1 + i_m)^(12 - m));
+#     tasa.mensual  tasa efectiva mensual equivalente i_m;
+#     va            valor acumulado al 31-dic: suma de S_m * factor;
+#     interes       intereses ganados: va - suma de S_m.
+# ------------------------------------------------------------
+valor.acumulado <- function(df, tasa.anual, canal) {
+  tasa.mensual <- (1 + tasa.anual)^(1 / 12) - 1
+
+  tabla <- df |>
+    filter(.data$canal == .env$canal) |>
+    mutate(mes = as.integer(format(as.Date(fecha), "%m"))) |>
+    summarise(monto = sum(as.numeric(monto_crc)), .by = mes) |>   # as.numeric: evita desbordar enteros
+    arrange(mes) |>
+    mutate(factor = (1 + tasa.mensual)^(12 - mes))
+
+  va <- sum(tabla$monto * tabla$factor)
+
+  list(tabla        = tabla,
+       tasa.mensual = tasa.mensual,
+       va           = va,
+       interes      = va - sum(tabla$monto))
+}
